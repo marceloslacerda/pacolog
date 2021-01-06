@@ -49,11 +49,14 @@ if [[ $# != 1 ]]; then
   exit 1
 fi
 
+# Determine terminal's width
+term_width=$(tput cols) ; term_width=${term_width:-80}
+
 # Determine package's repository
 repo=$(pacman -Spdd --print-format %r ${1} 2>/dev/null)
 
 # Determine base package, and start to build url
-package_page=$(w3m -dump "https://www.archlinux.org/packages/${repo}/x86_64/${1}/")
+package_page=$(w3m -cols ${term_width} -dump "https://www.archlinux.org/packages/${repo}/x86_64/${1}/")
 base=$(sed -nr 's/^\s*Base Package:\s*(\S*)$/\1/p' <<<"${package_page}")
 if [ -z "$base" ]; then
   base="${1}"
@@ -78,7 +81,7 @@ esac
 post_url='&showmsg=1'
 
 # Parse commit log
-output=$(w3m -dump "${pre_url}${base}${post_url}" | sed -n '/Commit message/,/^\s*$/p')
+output=$(w3m -cols ${term_width} -dump "${pre_url}${base}${post_url}" | sed -n '/Commit message/,/^\s*$/p')
 
 # Check for presence of log
 if [ -z "$output" ]; then
