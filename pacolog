@@ -54,7 +54,7 @@ repo=$(pacman -Spdd --print-format %r ${1} 2>/dev/null)
 
 # Determine base package, and start to build url
 package_page=$(w3m -dump "https://www.archlinux.org/packages/${repo}/x86_64/${1}/")
-base=$(sed -nr 's/^\s*Base Package:\s*(\S*)$/\1/p' <<<"${package_page}")
+base=$(sed -nE 's/^\s*Base Package:\s*(\S*)$/\1/p' <<<"${package_page}")
 if [ -z "$base" ]; then
   base="${1}"
 fi
