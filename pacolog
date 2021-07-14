@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Copyright 2016 Lee M. Yeoh (email: "plast-dot-id-dot-au" follows "gitlab")
+# Copyright 2021 Lee M. Yeoh (email: "plast-dot-id-dot-au" follows "gitlab")
 # This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
 #   the Free Software Foundation, either version 3 of the License, or
@@ -61,13 +61,13 @@ fi
 
 case $repo in
 core|extra|testing)
-  pre_url='https://projects.archlinux.org/svntogit/packages.git/log/trunk?h=packages/'
+  repo_url=packages
   ;;
 community|multilib)
-  pre_url='https://projects.archlinux.org/svntogit/community.git/log/trunk?h=packages/'
+  repo_url=community
   ;;
 '') # AUR or package not found
-  pre_url='https://aur.archlinux.org/cgit/aur.git/log/?h='
+  repo_url=aur
   ;;
 *)
   echo "ERROR: Unknown repository returned (\"${repo}\")" >&2
@@ -75,26 +75,41 @@ community|multilib)
   ;;
 esac
 
-post_url='&showmsg=1'
-
 # Determine terminal's width. Fall back to 80.
 term_width=$(tput cols); term_width=${term_width:-80}
 
-# Parse commit log
-output=$(w3m -cols ${term_width} -dump "${pre_url}${base}${post_url}" | sed -n '/Commit message/,/^\s*$/p')
+# Download and clean output
+if [ ! $repo_url = aur ]; then # official repositories
+  url="https://github.com/archlinux/svntogit-${repo_url}/commits/packages/${base}/trunk"
+  # Download commit log
+  output=$(w3m -cols ${term_width} -dump "${url}" | gawk '/^Commits/ {printing="true"}; printing=="true" && !/^$/ && !/^\s+/ && !/^Commits/ {exit}; printing=="true" {print}')
+  # Remove whitespace
+  clean_output="$(<<<"$output" sed '/^[[:space:]]*$/d')"
+  # Remove trailing … (leading ` 1. ` is important if >1 commit per day)
+  # Potentially can remove the trailing information on each commit, but it's potentially inconsistent, and maybe some users want to know this?
+  clean_output="$(<<<"$clean_output" sed -E 's/\s+…\s*$//')"
+
+else # AUR
+  url="https://aur.archlinux.org/cgit/aur.git/log/?h=${base}&showmsg=1"
+  # Download commit log
+  output=$(w3m -cols ${term_width} -dump "${url}" | sed -n '/Commit message/,/^\s*$/p')
+  # Remove "(Collapse)" from header
+  clean_output="$(<<<"$output" sed '1 s/(Collapse)/          /')"
+fi
 
 # Check for presence of log
-if [ -z "$output" ]; then
+if [ -z "$clean_output" ]; then
   echo "ERROR: no log found for ${1}"
   exit 1
 fi
-
-# Remove "(Collapse)" from header
-clean_output="$(<<<"$output" sed '1 s/(Collapse)/          /')"
 
 # Truncate if necessary
 if [ -z $length ]; then
   echo "$clean_output"
 else
-  <<<"$clean_output" gawk -v l=$length 'BEGIN {nth=0}; /^\s/ {print; next} {if (nth == l){exit} else {print}; nth++}'
+  if [ ! $repo_url = aur ]; then # official repositories. N.B. ignore 
+    <<<"$clean_output" gawk -v l=$length 'BEGIN {nth=0}; ! /^Commits/ && ! /\s+[2-9]\. / {print; next} {if (nth == l){exit} else {print}; nth++}'
+  else # AUR
+    <<<"$clean_output" gawk -v l=$length 'BEGIN {nth=0}; /^\s/ {print; next} {if (nth == l){exit} else {print}; nth++}'
+  fi
 fi
