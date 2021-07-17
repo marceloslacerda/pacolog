@@ -63,7 +63,7 @@ case $repo in
 core|extra|testing)
   repo_url=packages
   ;;
-community|multilib)
+community|multilib|community-testing|multilib-testing)
   repo_url=community
   ;;
 '') # AUR or package not found
