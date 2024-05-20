@@ -85,7 +85,7 @@ def print_commits_since_last_update(upgrade):
     for commit in commits:
         tag, message, commiter, timestring, commit_url = get_commit_data(commit)
         if tag is None or upgrade["updated_version"] in tag:
-            print(f"({commiter}) {timestring} Message:  {message}")
+            print(f"[{timestring}] ({commiter}) Message:  {message}")
             print(f"Link: {upgrade["base_url"]}/{commit_url}")
             print()
             some_commit_printed = True
